@@ -9,6 +9,16 @@ class Player
   def increment_score
     @score += 1
   end
+
+  def obtain_move(choice)
+    case choice
+    when 'rock' then Rock.new
+    when 'paper' then Paper.new
+    when 'scissors' then Scissors.new
+    when 'lizard' then Lizard.new
+    when 'spock' then Spock.new
+    end
+  end
 end
 
 class Human < Player
@@ -26,12 +36,12 @@ class Human < Player
   def choose
     choice = nil
     loop do
-      puts "Please choose rock, paper, or scissors: "
-      choice = gets.chomp
+      puts "Please choose rock, paper, scissors, lizard, or spock: "
+      choice = gets.chomp.downcase
       break if Move::VALUES.include?(choice)
       puts "Sorry, invalid choice."
     end
-    self.move = Move.new(choice)
+    self.move = obtain_move(choice)
   end
 end
 
@@ -41,43 +51,69 @@ class Computer < Player
   end
 
   def choose
-    self.move = Move.new(Move::VALUES.sample)
+    self.move = obtain_move(Move::VALUES.sample)
   end
 end
 
 class Move
-  VALUES = ['rock', 'paper', 'scissors']
+  VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
 
-  def initialize(value)
-    @value = value
-  end
+  WIN_OVER = { 'rock' => ['scissors', 'lizard'],
+               'paper' => ['rock', 'spock'],
+               'scissors' => ['paper', 'lizard'],
+               'lizard' => ['spock', 'paper'],
+               'spock' => ['scissors', 'rock'] }
 
-  def scissors?
-    @value == 'scissors'
-  end
+  LOSE_TO = { 'rock' => ['paper', 'spock'],
+              'paper' => ['scissors', 'lizard'],
+              'scissors' => ['spock', 'rock'],
+              'lizard' => ['scissors', 'rock'],
+              'spock' => ['lizard', 'paper'] }
 
-  def rock?
-    @value == 'rock'
-  end
-
-  def paper?
-    @value == 'paper'
-  end
+  attr_reader :value
 
   def >(other_move)
-    (rock? && other_move.scissors?) ||
-      (paper? && other_move.rock?) ||
-      (scissors? && other_move.paper?)
+    return true if WIN_OVER[value].include?(other_move.value)
+    false
   end
 
   def <(other_move)
-    (rock? && other_move.paper?) ||
-      (paper? && other_move.scissors?) ||
-      (scissors? && other_move.rock?)
+    return true if LOSE_TO[value].include?(other_move.value)
+    false
   end
 
   def to_s
     @value
+  end
+end
+
+class Rock < Move
+  def initialize
+    @value = 'rock'
+  end
+end
+
+class Paper < Move
+  def initialize
+    @value = 'paper'
+  end
+end
+
+class Scissors < Move
+  def initialize
+    @value = 'scissors'
+  end
+end
+
+class Lizard < Move
+  def initialize
+    @value = 'lizard'
+  end
+end
+
+class Spock < Move
+  def initialize
+    @value = 'spock'
   end
 end
 
