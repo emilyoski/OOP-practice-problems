@@ -56,12 +56,26 @@ class Human < Player
 end
 
 class Computer < Player
+  HAL_OPTIONS = ['scissors', 'scissors', 'scissors', 'scissors', 'rock']
+  CHAP_OPTIONS = ['spock', 'spock', 'lizard', 'paper', 'rock', 'scissors']
+  SON_OPTIONS = ['paper', 'lizard']
+
   def set_name
     self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
   end
 
   def choose
-    self.move = obtain_move(Move::VALUES.sample)
+    self.move = obtain_move(personality_move)
+  end
+
+  def personality_move
+    case name
+    when 'R2D2' then 'rock'
+    when 'Hal' then HAL_OPTIONS.sample
+    when 'Chappie' then CHAP_OPTIONS.sample
+    when 'Sonny' then SON_OPTIONS.sample
+    when 'Number 5' then Move::VALUES.sample
+    end
   end
 end
 
