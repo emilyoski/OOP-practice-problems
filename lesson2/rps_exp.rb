@@ -1,9 +1,10 @@
 class Player
-  attr_accessor :move, :name, :score
+  attr_accessor :move, :name, :score, :moves_used
 
   def initialize
     set_name
     @score = 0
+    @moves_used = []
   end
 
   def increment_score
@@ -18,6 +19,15 @@ class Player
     when 'lizard' then Lizard.new
     when 'spock' then Spock.new
     end
+  end
+
+  def record_move
+    moves_used << move.value
+  end
+
+  def execute_move
+    choose
+    record_move
   end
 end
 
@@ -157,7 +167,7 @@ class RPSGame < Game
     end
   end
 
-  def display_moves
+  def display_current_moves
     puts "#{human.name} chose #{human.move}."
     puts "#{computer.name} chose #{computer.move}."
   end
@@ -178,10 +188,22 @@ class RPSGame < Game
     puts "#{computer.name} has #{computer.score} wins."
   end
 
+  def display_historical_moves
+    puts "#{human.name} has chosen the following moves so far: "
+    puts human.moves_used.join(', ')
+    puts "#{computer.name} has chosen the following moves so far: "
+    puts computer.moves_used.join(', ')
+  end
+
   def display_game_status(winner)
-    display_moves
+    display_current_moves
     display_winner(winner)
+    sleep 1
+    puts "=================================="
     display_scores
+    puts "=================================="
+    display_historical_moves
+    puts "=================================="
   end
 
   def update_scores(winner)
@@ -199,8 +221,8 @@ class RPSGame < Game
 
   def play
     loop do
-      human.choose
-      computer.choose
+      human.execute_move
+      computer.execute_move
       winner = determine_winner
       update_scores(winner)
       display_game_status(winner)
