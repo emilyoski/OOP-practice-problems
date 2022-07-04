@@ -1,3 +1,5 @@
+require 'colorize'
+
 class Player
   attr_accessor :move, :name, :score, :moves_used
 
@@ -32,13 +34,15 @@ class Player
 end
 
 class Human < Player
+  VALID_USER_MOVE_INPUTS = ['r', 'p', 'sc', 'l', 'sp']
+
   def set_name
     n = nil
     loop do
-      puts "What's your name?"
+      puts "What's your name?".red
       n = gets.chomp
       break unless n.empty?
-      puts "Sorry, must enter a value."
+      puts "Sorry, must enter a value.".red
     end
     self.name = n
   end
@@ -46,12 +50,38 @@ class Human < Player
   def choose
     choice = nil
     loop do
-      puts "Please choose rock, paper, scissors, lizard, or spock: "
-      choice = gets.chomp.downcase
+      user_input = obtain_valid_user_input
+      choice = user_input_to_move(user_input)
       break if Move::VALUES.include?(choice)
-      puts "Sorry, invalid choice."
     end
     self.move = obtain_move(choice)
+  end
+
+  def obtain_valid_user_input
+    input = nil
+    loop do
+      break if VALID_USER_MOVE_INPUTS.include?(input)
+      puts "Please choose Rock (r), Paper (p), Scissors (sc), Lizard (l), or Spock (sp): ".cyan
+      input = gets.chomp.downcase
+      
+      if input == 's'
+        puts "Did you mean scissors (sc) or spock (sp)?".cyan
+        input = gets.chomp.downcase
+      elsif !VALID_USER_MOVE_INPUTS.include?(input)
+        puts "Sorry, invalid choice.".cyan
+      end
+    end
+    input
+  end
+
+  def user_input_to_move(input)
+    case input
+    when 'r' then 'rock'
+    when 'p' then 'paper'
+    when 'sc' then 'scissors'
+    when 'l' then 'lizard'
+    when 'sp' then 'spock'
+    end
   end
 end
 
@@ -142,21 +172,73 @@ class Spock < Move
 end
 
 class Game
+  WIN_POINTS = 5
+
+  # general methods for user experience
+  def clear_screen
+    system 'clear'
+  end
+
+  def wait
+    sleep 1
+  end
+
+  # general game name and rules
+  def game_name
+    "the Game!"
+  end
+
+  def rules
+    "Obtain the winning criteria. Defeat your opponent!"
+  end
+
+  # display methods for beginning the game
+  def display_welcome
+    display_welcome_message
+    display_rules
+    display_win_points
+    wait
+    prompt_questions
+    clear_screen
+  end
+
   def display_welcome_message
-    puts "Welcome to the Game!"
+    puts "Welcome to #{game_name}".red
   end
 
+  def display_rules
+    puts "Do you want to hear the rules?".red
+    ans = gets.chomp.downcase
+    return unless ans == 'yes'
+    puts "The following rules apply for this game: #{rules}".red
+  end
+
+  def display_win_points
+    puts "First player to hit #{WIN_POINTS} is the winner!".red
+  end
+
+  def prompt_questions
+    loop do
+      puts "Do you have any questions before we begin?".red
+      ans = gets.chomp.downcase
+      break if ans == 'no'
+      display_rules
+    end
+  end
+
+  # display methods for completion of the game
   def display_goodbye_message
-    puts "Thanks for playing the Game! Good bye!"
+    puts "Thanks for playing the #{game_name}! Good bye!".red
   end
 
+  # general game ending condition for player to exit game
   def done_playing?
     answer = nil
     loop do
-      puts "Would you like to play again? (y/n)"
+      puts "Would you like to continue playing? (y/n)".red
       answer = gets.chomp
       break if ['y', 'n'].include?(answer.downcase)
-      puts "Sorry, must be y or n."
+      puts "Sorry, must be y or n.".red
     end
 
     return false if answer.downcase == 'y'
@@ -170,9 +252,14 @@ class RPSGame < Game
   def initialize
     @human = Human.new
     @computer = Computer.new
-    display_welcome_message
+    display_welcome
   end
 
+  def game_name
+    "Rock, Paper, Scissors, Lizard, Spock"
+  end
+
+  # determining the winner; utilize the winner for other methods
   def determine_winner
     if human.move > computer.move
       human
@@ -181,45 +268,48 @@ class RPSGame < Game
     end
   end
 
+  # display methods for game specific play
   def display_current_moves
-    puts "#{human.name} chose #{human.move}."
-    puts "#{computer.name} chose #{computer.move}."
+    puts "#{human.name} chose #{human.move}.".cyan
+    puts "#{computer.name} chose #{computer.move}.".cyan
   end
 
   def display_winner(winner)
     case winner
     when human
-      puts "#{human.name} won!"
+      puts "#{human.name} won!".cyan
     when computer
-      puts "#{computer.name} won!"
+      puts "#{computer.name} won!".cyan
     else
-      puts "It's a tie!"
+      puts "It's a tie!".cyan
     end
   end
 
   def display_scores
-    puts "#{human.name} has #{human.score} wins."
-    puts "#{computer.name} has #{computer.score} wins."
+    puts "#{human.name} has #{human.score} wins.".cyan
+    puts "#{computer.name} has #{computer.score} wins.".cyan
   end
 
   def display_historical_moves
-    puts "#{human.name} has chosen the following moves so far: "
-    puts human.moves_used.join(', ')
-    puts "#{computer.name} has chosen the following moves so far: "
-    puts computer.moves_used.join(', ')
+    puts "#{human.name} has chosen the following moves so far: ".cyan
+    puts "#{human.moves_used.join(', ')}".cyan
+    puts "#{computer.name} has chosen the following moves so far: ".cyan
+    puts "#{computer.moves_used.join(', ')}".cyan
   end
 
   def display_game_status(winner)
     display_current_moves
     display_winner(winner)
-    sleep 1
-    puts "=================================="
+    wait
+    clear_screen
+    puts "=============SCOREBOARD===========\n".cyan
     display_scores
-    puts "=================================="
+    puts "\n=============GAME HISTORY=========\n".cyan
     display_historical_moves
-    puts "=================================="
+    puts "\n==================================".cyan
   end
 
+  # update scores dependant upon the winner
   def update_scores(winner)
     case winner
     when human
@@ -229,10 +319,12 @@ class RPSGame < Game
     end
   end
 
+  # game ending condition
   def win_points_hit?
-    (human.score == 10) || (computer.score == 10)
+    (human.score == Game::WIN_POINTS) || (computer.score == Game::WIN_POINTS)
   end
 
+  # RPS game loop
   def play
     loop do
       human.execute_move
