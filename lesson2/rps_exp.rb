@@ -13,6 +13,15 @@ class Player
     @score += 1
   end
 
+  # execute all methods needed for a move
+  def execute_move
+    choose
+    record_move
+  end
+
+  private
+
+  # create appropriate object based on move selected by player
   def obtain_move(choice)
     case choice
     when 'rock' then Rock.new
@@ -26,16 +35,9 @@ class Player
   def record_move
     moves_used << move.value
   end
-
-  def execute_move
-    choose
-    record_move
-  end
 end
 
 class Human < Player
-  VALID_USER_MOVE_INPUTS = ['r', 'p', 'sc', 'l', 'sp']
-
   def set_name
     n = nil
     loop do
@@ -47,6 +49,18 @@ class Human < Player
     self.name = n
   end
 
+  private
+
+  VALID_USER_MOVE_INPUTS = ['r', 'p', 'sc', 'l', 'sp']
+  PLAYER_SELECT_PROMPT = <<-MSG
+    Please choose:
+      Rock (r)
+      Paper (p)
+      Scissors (sc)
+      Lizard (l)
+      Spock (sp)
+  MSG
+
   def choose
     choice = nil
     loop do
@@ -57,13 +71,14 @@ class Human < Player
     self.move = obtain_move(choice)
   end
 
+  # methods to validate and standardize user input
   def obtain_valid_user_input
     input = nil
     loop do
       break if VALID_USER_MOVE_INPUTS.include?(input)
-      puts "Please choose Rock (r), Paper (p), Scissors (sc), Lizard (l), or Spock (sp): ".cyan
+      puts PLAYER_SELECT_PROMPT.cyan
       input = gets.chomp.downcase
-      
+
       if input == 's'
         puts "Did you mean scissors (sc) or spock (sp)?".cyan
         input = gets.chomp.downcase
@@ -86,18 +101,21 @@ class Human < Player
 end
 
 class Computer < Player
-  HAL_OPTIONS = ['scissors', 'scissors', 'scissors', 'scissors', 'rock']
-  CHAP_OPTIONS = ['spock', 'spock', 'lizard', 'paper', 'rock', 'scissors']
-  SON_OPTIONS = ['paper', 'lizard']
-
   def set_name
     self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
   end
+
+  private
+
+  HAL_OPTIONS = ['scissors', 'scissors', 'scissors', 'scissors', 'rock']
+  CHAP_OPTIONS = ['spock', 'spock', 'lizard', 'paper', 'rock', 'scissors']
+  SON_OPTIONS = ['paper', 'lizard']
 
   def choose
     self.move = obtain_move(personality_move)
   end
 
+  # move depending on which robot is used as the computer
   def personality_move
     case name
     when 'R2D2' then 'rock'
@@ -192,7 +210,7 @@ class Game
     "Obtain the winning criteria. Defeat your opponent!"
   end
 
-  # display methods for beginning the game
+  # display methods for the game
   def display_welcome
     display_welcome_message
     display_rules
@@ -226,7 +244,6 @@ class Game
     end
   end
 
-  # display methods for completion of the game
   def display_goodbye_message
     puts "Thanks for playing the #{game_name}! Good bye!".red
   end
@@ -257,6 +274,17 @@ class RPSGame < Game
 
   def game_name
     "Rock, Paper, Scissors, Lizard, Spock"
+  end
+
+  def rules
+    "\nEach player will select a move from:
+    rock, paper, scissors, lizard, spock. \n \n
+    The following are winning combinations against your opponent! \n
+    Rock beats lizard and scissors.
+    Paper beats rock and spock.
+    Scissors beats paper and lizard.
+    Lizard beats spock and paper.
+    Spock beats scissors and rock.\n"
   end
 
   # determining the winner; utilize the winner for other methods
@@ -292,9 +320,9 @@ class RPSGame < Game
 
   def display_historical_moves
     puts "#{human.name} has chosen the following moves so far: ".cyan
-    puts "#{human.moves_used.join(', ')}".cyan
+    puts human.moves_used.join(', ').cyan
     puts "#{computer.name} has chosen the following moves so far: ".cyan
-    puts "#{computer.moves_used.join(', ')}".cyan
+    puts computer.moves_used.join(', ').cyan
   end
 
   def display_game_status(winner)
