@@ -122,34 +122,70 @@ class Square
 end
 
 class Player
-  attr_reader :marker, :name
+  COMPUTER_NAMES = ['R2D2', 'Gru', 'The Mad Scientist', 'Mac Attack']
+  attr_reader :marker, :name, :player_type
   attr_accessor :score
 
-  def initialize(marker, name)
-    @marker = marker
+  def initialize(player_type)
+    @player_type = player_type
+    @potential_markers = ('A'..'Z').to_a
     @score = 0
-    @name = name
+    set_name
+    set_marker
   end
 
   def add_win_to_score
     self.score += 1
   end
+
+  private
+
+  attr_writer :marker, :name
+  attr_accessor :potential_markers
+
+  def set_name
+    @name = if player_type == :human
+              prompt_set_name
+            else
+              COMPUTER_NAMES.sample
+            end
+  end
+
+  def prompt_set_name
+    puts "What's your name?"
+    gets.chomp.capitalize
+  end
+
+  def set_marker
+    @marker = if player_type == :human
+                prompt_set_marker
+              else
+                mark = potential_markers[rand(potential_markers.size - 1)]
+                potential_markers.delete(mark)
+                mark
+              end
+  end
+
+  def prompt_set_marker
+    puts "Select one of the letters to be your marker: "
+    puts potential_markers.join(', ')
+    puts "What is your choice?"
+    mark = gets.chomp.capitalize
+    potential_markers.delete(mark)
+    mark
+  end
 end
 
 class TTTGame
-  HUMAN_MARKER = "X"
-  COMPUTER_MARKER = "O"
-  FIRST_TO_MOVE = HUMAN_MARKER
   GAMES_TO_WIN = 2
 
   attr_reader :board, :human, :computer
-  attr_accessor :difficulty
 
   def initialize
     @board = Board.new
-    @human = Player.new(HUMAN_MARKER, 'bob')
-    @computer = Player.new(COMPUTER_MARKER, 'r2d2')
-    @current_marker = FIRST_TO_MOVE
+    @human = Player.new(:human)
+    @computer = Player.new(:computer)
+    @current_marker = nil
     @difficulty = nil
   end
 
@@ -162,8 +198,10 @@ class TTTGame
 
   private
 
+  attr_accessor :difficulty, :current_marker
+
   def main_game
-    set_game_difficulty
+    set_up_game
     loop do
       display_board
       player_moves
@@ -173,6 +211,13 @@ class TTTGame
       reset
       display_play_again_message
     end
+  end
+
+  def set_up_game
+    set_game_difficulty
+    clear
+    decide_first_player
+    clear
   end
 
   def set_game_difficulty
@@ -185,6 +230,30 @@ class TTTGame
                       else
                         'easy'
                       end
+  end
+
+  def decide_first_player
+    puts "Do you want to decide who goes first? (y/n)"
+    answer = gets.chomp.downcase
+    self.current_marker = if answer == 'y'
+                            set_first_player
+                          else
+                            [human.marker, computer.marker].sample
+                          end
+  end
+
+  def set_first_player
+    answer = nil
+    loop do
+      puts "Who will go first?"
+      puts "#{human.name}, Player (p) or #{computer.name}, Computer (c)?"
+      answer = gets.chomp.downcase
+      break if %w(p c).include?(answer)
+      puts "That was not a valid player option."
+      puts "Please select (p) for Player or (c) for Computer."
+    end
+
+    answer == 'p' ? human.marker : computer.marker
   end
 
   def player_moves
@@ -248,8 +317,8 @@ class TTTGame
 
   RULES = <<-MSG
     => This game is played on a grid that's 3 squares by 3 squares.
-    => You are X, the computer is O.
-         X and O is the default; you can however select your own!
+    => X and O is the default. However, you will select your marker
+         and the computer's marker will be a random letter.
     => You will select the difficulty level of the computer (easy or hard).
          In easy, only defensive plays will be selected by the computer.
          In hard, OFFENSIVE and defensive plays will be selected.
@@ -358,7 +427,7 @@ class TTTGame
   end
 
   def human_turn?
-    @current_marker == HUMAN_MARKER
+    @current_marker == human.marker
   end
 
   def human_moves
@@ -397,10 +466,10 @@ class TTTGame
   def current_player_moves
     if human_turn?
       human_moves
-      @current_marker = COMPUTER_MARKER
+      @current_marker = computer.marker
     else
       computer_moves
-      @current_marker = HUMAN_MARKER
+      @current_marker = human.marker
     end
   end
 end
