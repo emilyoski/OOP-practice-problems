@@ -1,3 +1,22 @@
+module ReadableOutput
+  def joinor(option, punct = ",", word = "or")
+    option.map!(&:to_s)
+    choices = option.length
+
+    if choices < 2
+      option[0]
+    elsif choices < 3
+      option[0] + " #{word} " + option[1]
+    else
+      option[0, (choices - 1)].join("#{punct} ") + " #{word} " + option[-1]
+    end
+  end
+
+  def clear
+    system "clear"
+  end
+end
+
 class Board
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
@@ -34,6 +53,11 @@ class Board
     nil
   end
 
+  # ======================================================================
+  # method used to identify if a line has 2 identical markers
+  #   and an unmarked square in the row
+  # this means there is a potential for a 'strategic' move
+  # ======================================================================
   def move_required?(chosen_marker)
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
@@ -44,6 +68,9 @@ class Board
     false
   end
 
+  # ======================================================================
+  # method used to determine the line with the available move
+  # ======================================================================
   def determine_line_for_move(chosen_marker)
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
@@ -122,14 +149,18 @@ class Square
 end
 
 class Player
+  include ReadableOutput
+  @@potential_markers = ('A'..'Z').to_a
+
   COMPUTER_NAMES = ['R2D2', 'Gru', 'The Mad Scientist', 'Mac Attack']
+
   attr_reader :marker, :name, :player_type
   attr_accessor :score
 
   def initialize(player_type)
     @player_type = player_type
-    @potential_markers = ('A'..'Z').to_a
     @score = 0
+    @first_to_move = nil
     set_name
     set_marker
   end
@@ -143,6 +174,10 @@ class Player
   attr_writer :marker, :name
   attr_accessor :potential_markers
 
+  # ======================================================================
+  # methods to set the name and marker of the player
+  # a class variable was utilized so each player will have an unique marker
+  # ======================================================================
   def set_name
     @name = if player_type == :human
               prompt_set_name
@@ -151,33 +186,40 @@ class Player
             end
   end
 
-  def prompt_set_name
-    puts "What's your name?"
-    gets.chomp.capitalize
-  end
-
   def set_marker
     @marker = if player_type == :human
                 prompt_set_marker
               else
-                mark = potential_markers[rand(potential_markers.size - 1)]
-                potential_markers.delete(mark)
+                mark = @@potential_markers[rand(@@potential_markers.size - 1)]
+                @@potential_markers.delete(mark)
                 mark
               end
   end
 
+  # ======================================================================
+  # methods to prompt the human player for their name and marker
+  # ======================================================================
+  def prompt_set_name
+    clear
+    puts "What's your name?"
+    gets.chomp.capitalize
+  end
+
   def prompt_set_marker
+    clear
     puts "Select one of the letters to be your marker: "
-    puts potential_markers.join(', ')
+    puts joinor(@@potential_markers)
     puts "What is your choice?"
     mark = gets.chomp.capitalize
-    potential_markers.delete(mark)
+    @@potential_markers.delete(mark)
     mark
   end
 end
 
 class TTTGame
-  GAMES_TO_WIN = 2
+  include ReadableOutput
+
+  GAMES_TO_WIN = 5
 
   attr_reader :board, :human, :computer
 
@@ -198,7 +240,7 @@ class TTTGame
 
   private
 
-  attr_accessor :difficulty, :current_marker
+  attr_accessor :difficulty, :current_marker, :first_to_move
 
   def main_game
     set_up_game
@@ -213,88 +255,9 @@ class TTTGame
     end
   end
 
-  def set_up_game
-    set_game_difficulty
-    clear
-    decide_first_player
-    clear
-  end
-
-  def set_game_difficulty
-    puts "Set the difficulty level of your opponent, #{computer.name}."
-    puts "Difficulty level: "
-    puts "=> Easy or Hard? "
-    answer = gets.chomp.downcase
-    self.difficulty = if answer == 'hard'
-                        'hard'
-                      else
-                        'easy'
-                      end
-  end
-
-  def decide_first_player
-    puts "Do you want to decide who goes first? (y/n)"
-    answer = gets.chomp.downcase
-    self.current_marker = if answer == 'y'
-                            set_first_player
-                          else
-                            [human.marker, computer.marker].sample
-                          end
-  end
-
-  def set_first_player
-    answer = nil
-    loop do
-      puts "Who will go first?"
-      puts "#{human.name}, Player (p) or #{computer.name}, Computer (c)?"
-      answer = gets.chomp.downcase
-      break if %w(p c).include?(answer)
-      puts "That was not a valid player option."
-      puts "Please select (p) for Player or (c) for Computer."
-    end
-
-    answer == 'p' ? human.marker : computer.marker
-  end
-
-  def player_moves
-    loop do
-      current_player_moves
-      break if board.someone_won? || board.full?
-      clear_screen_and_display_board if human_turn?
-    end
-  end
-
-  def update_score
-    case board.winning_marker
-    when human.marker
-      human.add_win_to_score
-    when computer.marker
-      computer.add_win_to_score
-    end
-  end
-
-  def overall_game_wins_achieved?
-    human.score == GAMES_TO_WIN || computer.score == GAMES_TO_WIN
-  end
-
-  def quit_playing?
-    answer = nil
-    loop do
-      puts "Would you like to continue playing? (y/n)"
-      answer = gets.chomp.downcase
-      break if %w(y n).include? answer
-      puts "Sorry, must be y or n"
-    end
-
-    answer == 'n'
-  end
-
-  def reset
-    board.reset
-    @current_marker = FIRST_TO_MOVE
-    clear
-  end
-
+  # ======================================================================
+  # methods for set up of game
+  # ======================================================================
   def display_welcome
     display_welcome_message
     loop do
@@ -303,6 +266,11 @@ class TTTGame
       break if ready_to_play?
     end
     clear
+  end
+
+  def display_welcome_message
+    puts "Welcome to Tic Tac Toe!"
+    puts ""
   end
 
   def skip_rules?
@@ -335,31 +303,139 @@ class TTTGame
     return true if answer == 'y'
   end
 
-  def display_welcome_message
-    puts "Welcome to Tic Tac Toe!"
-    puts ""
-  end
-
-  def display_goodbye
+  def set_up_game
+    set_game_difficulty
     clear
-    display_score
-    display_overall_winner if overall_game_wins_achieved?
-    puts ""
-    display_goodbye_message
+    decide_first_player
+    clear
   end
 
-  def display_overall_winner
-    if human.score == GAMES_TO_WIN
-      puts "#{human.name} is the champion of Tic Tac Toe!"
-      puts "Crushed it!"
-    elsif computer.score == GAMES_TO_WIN
-      puts "#{computer.name} is the champion of Tic Tac Toe!"
-      puts "That's rough..."
+  def set_game_difficulty
+    puts "Set the difficulty level of your opponent, #{computer.name}."
+    puts "Difficulty level: "
+    puts "=> Easy or Hard? "
+    answer = gets.chomp.downcase
+    self.difficulty = if answer == 'hard'
+                        'hard'
+                      else
+                        'easy'
+                      end
+  end
+
+  def decide_first_player
+    puts "Do you want to decide who goes first? (y/n)"
+    answer = gets.chomp.downcase
+    self.current_marker = if answer == 'y'
+                            set_first_player
+                          else
+                            [human.marker, computer.marker].sample
+                          end
+    self.first_to_move = current_marker
+  end
+
+  def set_first_player
+    answer = nil
+    loop do
+      puts "Who will go first?"
+      puts "#{human.name}, Player (p) or #{computer.name}, Computer (c)?"
+      answer = gets.chomp.downcase
+      break if %w(p c).include?(answer)
+      puts "That was not a valid player option."
+      puts "Please select (p) for Player or (c) for Computer."
+    end
+
+    answer == 'p' ? human.marker : computer.marker
+  end
+
+  # ======================================================================
+  # methods relating to player moves
+  # ======================================================================
+  def player_moves
+    loop do
+      current_player_moves
+      break if board.someone_won? || board.full?
+      clear_screen_and_display_board if human_turn?
     end
   end
 
-  def display_goodbye_message
-    puts "Thanks for playing Tic Tac Toe! Goodbye!"
+  def display_unmarked_keys
+    puts "Choose a square for your move: "
+    puts "=> #{joinor(board.unmarked_keys)}"
+  end
+
+  def human_turn?
+    @current_marker == human.marker
+  end
+
+  def human_moves
+    display_unmarked_keys
+    square = nil
+    loop do
+      square = gets.chomp.to_i
+      break if board.unmarked_keys.include?(square)
+      puts "Sorry, that's not a valid choice."
+    end
+
+    board[square] = human.marker
+  end
+
+  def computer_moves
+    move = determine_computer_move(computer.marker, human.marker, difficulty)
+    board[move] = computer.marker
+  end
+
+  # ======================================================================
+  # first conditional is evaluating if an offensive move is available
+  #   and the player chose a 'hard' difficulty level
+  # second conditional is evaluating if a defensive move is needed
+  # ======================================================================
+  def determine_computer_move(offensive_marker, defensive_marker, diff_lvl)
+    if board.move_required?(offensive_marker) && diff_lvl == 'hard'
+      board.find_empty_square_for_move(offensive_marker)
+    elsif board.move_required?(defensive_marker)
+      board.find_empty_square_for_move(defensive_marker)
+    elsif board.unmarked_keys.include?(5)
+      5
+    else
+      board.unmarked_keys.sample
+    end
+  end
+
+  def current_player_moves
+    if human_turn?
+      human_moves
+      @current_marker = computer.marker
+    else
+      computer_moves
+      @current_marker = human.marker
+    end
+  end
+
+  # ======================================================================
+  # methods related to scoring
+  # ======================================================================
+  def update_and_display_score
+    update_score
+    display_score
+  end
+
+  def update_score
+    case board.winning_marker
+    when human.marker
+      human.add_win_to_score
+    when computer.marker
+      computer.add_win_to_score
+    end
+  end
+
+  # ======================================================================
+  # methods related to display during the game
+  # ======================================================================
+  def display_score
+    puts "==========SCORES=============\n"
+    puts "#{human.name} has #{human.score} wins."
+    puts "#{computer.name} has #{computer.score} wins."
+    puts "============================="
   end
 
   def clear_screen_and_display_board
@@ -387,16 +463,14 @@ class TTTGame
     end
   end
 
-  def display_score
-    puts "==========SCORES=============\n"
-    puts "#{human.name} has #{human.score} wins."
-    puts "#{computer.name} has #{computer.score} wins."
-    puts "============================="
-  end
+  # ======================================================================
+  # methods related to resetting the game before the next
+  # ======================================================================
 
-  def update_and_display_score
-    update_score
-    display_score
+  def reset
+    board.reset
+    @current_marker = first_to_move
+    clear
   end
 
   def display_play_again_message
@@ -404,73 +478,45 @@ class TTTGame
     puts ""
   end
 
-  def display_unmarked_keys
-    puts "Choose a square for your move: "
-    puts "=> #{joinor(board.unmarked_keys)}"
+  # ======================================================================
+  # methods relating to game conclusion
+  # ======================================================================
+  def overall_game_wins_achieved?
+    human.score == GAMES_TO_WIN || computer.score == GAMES_TO_WIN
   end
 
-  def joinor(option, punct = ",", word = "or")
-    option.map!(&:to_s)
-    choices = option.length
-
-    if choices < 2
-      option[0]
-    elsif choices < 3
-      option[0] + " #{word} " + option[1]
-    else
-      option[0, (choices - 1)].join("#{punct} ") + " #{word} " + option[-1]
-    end
-  end
-
-  def clear
-    system "clear"
-  end
-
-  def human_turn?
-    @current_marker == human.marker
-  end
-
-  def human_moves
-    display_unmarked_keys
-    square = nil
+  def quit_playing?
+    answer = nil
     loop do
-      square = gets.chomp.to_i
-      break if board.unmarked_keys.include?(square)
-      puts "Sorry, that's not a valid choice."
+      puts "Would you like to continue playing? (y/n)"
+      answer = gets.chomp.downcase
+      break if %w(y n).include? answer
+      puts "Sorry, must be y or n"
     end
 
-    board[square] = human.marker
+    answer == 'n'
   end
 
-  def computer_moves
-    move = determine_computer_move(computer.marker, human.marker, difficulty)
-    board[move] = computer.marker
+  def display_goodbye
+    clear
+    display_score
+    display_overall_winner if overall_game_wins_achieved?
+    puts ""
+    display_goodbye_message
   end
 
-  # first conditional is evaluating if an offensive move is available
-  #   and the player chose a 'hard' difficulty level
-  # second conditional is evaluating if a defensive move is needed
-
-  def determine_computer_move(offensive_marker, defensive_marker, diff_lvl)
-    if board.move_required?(offensive_marker) && diff_lvl == 'hard'
-      board.find_empty_square_for_move(offensive_marker)
-    elsif board.move_required?(defensive_marker)
-      board.find_empty_square_for_move(defensive_marker)
-    elsif board.unmarked_keys.include?(5)
-      5
-    else
-      board.unmarked_keys.sample
+  def display_overall_winner
+    if human.score == GAMES_TO_WIN
+      puts "#{human.name} is the champion of Tic Tac Toe!"
+      puts "Crushed it!"
+    elsif computer.score == GAMES_TO_WIN
+      puts "#{computer.name} is the champion of Tic Tac Toe!"
+      puts "That's rough..."
     end
   end
 
-  def current_player_moves
-    if human_turn?
-      human_moves
-      @current_marker = computer.marker
-    else
-      computer_moves
-      @current_marker = human.marker
-    end
+  def display_goodbye_message
+    puts "Thanks for playing Tic Tac Toe! Goodbye!"
   end
 end
 
