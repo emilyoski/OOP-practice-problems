@@ -111,6 +111,10 @@ class Board
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
 
+  def square_numbers
+    "\n 1 | 2 | 3 \n 4 | 5 | 6 \n 7 | 8 | 9 \n"
+  end
+
   private
 
   def three_identical_markers?(squares)
@@ -152,13 +156,10 @@ class Player
   include ReadableOutput
   @@potential_markers = ('A'..'Z').to_a
 
-  COMPUTER_NAMES = ['R2D2', 'Gru', 'The Mad Scientist', 'Mac Attack']
-
-  attr_reader :marker, :name, :player_type
+  attr_reader :marker, :name
   attr_accessor :score
 
-  def initialize(player_type)
-    @player_type = player_type
+  def initialize
     @score = 0
     @first_to_move = nil
     set_name
@@ -173,46 +174,45 @@ class Player
 
   attr_writer :marker, :name
   attr_accessor :potential_markers
+end
 
+class Human < Player
   # ======================================================================
   # methods to set the name and marker of the player
   # a class variable was utilized so each player will have an unique marker
   # ======================================================================
   def set_name
-    @name = if player_type == :human
-              prompt_set_name
-            else
-              COMPUTER_NAMES.sample
-            end
+    clear
+    puts "What's your name?"
+    @name = gets.chomp.strip.capitalize
   end
 
   def set_marker
-    @marker = if player_type == :human
-                prompt_set_marker
-              else
-                mark = @@potential_markers[rand(@@potential_markers.size - 1)]
-                @@potential_markers.delete(mark)
-                mark
-              end
-  end
-
-  # ======================================================================
-  # methods to prompt the human player for their name and marker
-  # ======================================================================
-  def prompt_set_name
-    clear
-    puts "What's your name?"
-    gets.chomp.capitalize
-  end
-
-  def prompt_set_marker
     clear
     puts "Select one of the letters to be your marker: "
     puts joinor(@@potential_markers)
     puts "What is your choice?"
     mark = gets.chomp.capitalize
     @@potential_markers.delete(mark)
-    mark
+    @marker = mark
+  end
+end
+
+class Computer < Player
+  COMPUTER_NAMES = ['R2D2', 'Gru', 'The Mad Scientist', 'Mac Attack']
+
+  # ======================================================================
+  # methods to set the name and marker of the player
+  # a class variable was utilized so each player will have an unique marker
+  # ======================================================================
+  def set_name
+    @name = COMPUTER_NAMES.sample
+  end
+
+  def set_marker
+    mark = @@potential_markers[rand(@@potential_markers.size - 1)]
+    @@potential_markers.delete(mark)
+    @marker = mark
   end
 end
 
@@ -225,17 +225,20 @@ class TTTGame
 
   def initialize
     @board = Board.new
-    @human = Player.new(:human)
-    @computer = Player.new(:computer)
+    @human = Human.new
+    @computer = Computer.new
     @current_marker = nil
     @difficulty = nil
   end
 
   def play
-    clear
-    display_welcome
-    main_game
-    display_goodbye
+    loop do
+      clear
+      display_welcome
+      main_game
+      display_goodbye
+      break if final_game?
+    end
   end
 
   private
@@ -274,9 +277,14 @@ class TTTGame
   end
 
   def skip_rules?
-    puts "Do you want to skip the rules and start playing? (y/n)"
-    answer = gets.chomp.downcase
-    return true if answer == 'y'
+    answer = nil
+    loop do
+      puts "Do you want to skip the rules and start playing? (y/n)"
+      answer = gets.chomp.downcase
+      break if %w(y yes n no).include?(answer)
+      puts "Sorry, invalid choice."
+    end
+    answer == 'y' || answer == 'yes'
   end
 
   def display_rules
@@ -298,9 +306,14 @@ class TTTGame
   MSG
 
   def ready_to_play?
-    puts "Are you ready to start playing? (y/n)"
-    answer = gets.chomp.downcase
-    return true if answer == 'y'
+    answer = nil
+    loop do
+      puts "Are you ready to start playing? (y/n)"
+      answer = gets.chomp.downcase
+      break if %w(y yes n no).include?(answer)
+      puts "Sorry, invalid choice."
+    end
+    answer == 'y' || answer == 'yes'
   end
 
   def set_up_game
@@ -446,6 +459,7 @@ class TTTGame
   def display_board
     puts "You're a #{human.marker}. Computer is a #{computer.marker}."
     puts ""
+    puts "Square numbers for reference: " + board.square_numbers
     board.draw
     puts ""
   end
@@ -516,7 +530,18 @@ class TTTGame
   end
 
   def display_goodbye_message
-    puts "Thanks for playing Tic Tac Toe! Goodbye!"
+    puts "Thanks for playing Tic Tac Toe! Hope you had fun!"
+  end
+
+  def final_game?
+    answer = nil
+    loop do
+      puts "Do you want to play the game of Tic Tac Toe again? (y/n)"
+      answer = gets.chomp.downcase
+      break if %w(y yes n no).include?(answer)
+      puts "Sorry, invalid choice."
+    end
+    answer == 'n' || answer == 'no'
   end
 end
 
