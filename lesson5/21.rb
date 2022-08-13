@@ -258,8 +258,9 @@ class Game
   end
 
   def show_cards_for_result
-    puts "Player has: \n"
-    puts show_all_cards(player.hand) + " for a total of: #{player.total}."
+    puts "Player has: \n \n #{show_all_cards(player.hand)} " \
+         "for a total of: #{player.total}."
+    #puts show_all_cards(player.hand) + " for a total of: #{player.total}."
     puts "\nDealer has: \n"
     puts show_all_cards(dealer.hand) + " for a total of: #{dealer.total}."
     puts "==============================================================="
