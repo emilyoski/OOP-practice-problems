@@ -1,17 +1,21 @@
-class Car
-  WHEELS = 4
-
-  def wheels
-    WHEELS
+module Speed
+  def go_fast
+    puts "I am a #{self.class} and going super fast!"
   end
 end
 
-class Motorcycle < Car
-  WHEELS = 2
+class Car
+  include Speed 
+
+  def go_slow
+    puts "I am safe and driving slow."
+  end
 end
 
-civic = Car.new
-puts civic.wheels # => 4
-
-bullet = Motorcycle.new
-puts bullet.wheels # => 4, when you expect the out to be 2
+class Truck
+  include Speed
+  
+  def go_very_slow
+    puts "I am a heavy truck and like going very slow."
+  end
+end
